@@ -9,7 +9,7 @@ interface FormatMarkdownSettings {
 const DEFAULT_SETTINGS: FormatMarkdownSettings = {
 	openRouterApiKey: '',
 	apiUrl: 'https://openrouter.ai/api/v1/chat/completions',
-	model: 'openai/gpt-3.5-turbo'
+	model: 'anthropic/claude-3.7-sonnet'
 }
 
 export default class FormatMarkdownPlugin extends Plugin {
@@ -92,7 +92,7 @@ ${content}`;
 				messages: [
 					{
 						role: 'system',
-						content: '你是一个专业的 Markdown 格式化助手。你的任务是将文本格式化为完美的 Markdown 格式，特别注意将数学公式用 $ 符号包裹成 LaTeX 格式，使其能在 Obsidian 中正确显示。不要改变文章的任何实际内容。'
+						content: '你是一个专业的 Markdown 格式化助手。你的任务是将文本格式化为完美的 Markdown 格式，特别注意将数学公式用 $ 符号包裹成 LaTeX 格式，使其能在 Obsidian 中正确显示。一定不要改变文章的任何实际内容。'
 					},
 					{
 						role: 'user',
@@ -100,7 +100,7 @@ ${content}`;
 					}
 				],
 				temperature: 0.1,
-				max_tokens: 4000
+				max_tokens: 400000
 			})
 		});
 
@@ -167,17 +167,45 @@ class FormatMarkdownSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('模型')
 			.setDesc('选择要使用的模型')
-			.addDropdown(dropdown => dropdown
-				.addOption('openai/gpt-3.5-turbo', 'GPT-3.5 Turbo')
-				.addOption('openai/gpt-4', 'GPT-4')
-				.addOption('openai/gpt-4-turbo', 'GPT-4 Turbo')
-				.addOption('anthropic/claude-3-haiku', 'Claude 3 Haiku')
-				.addOption('anthropic/claude-3-sonnet', 'Claude 3 Sonnet')
-				.addOption('anthropic/claude-3-opus', 'Claude 3 Opus')
-				.addOption('meta-llama/llama-3-70b-instruct', 'Llama 3 70B')
+			.addDropdown(dropdown => {
+				dropdown
+					.addOption('anthropic/claude-3.7-sonnet', 'Claude 3.7 Sonnet')
+					.addOption('google/gemini-2.5-flash', 'Gemini 2.5 Flash')
+					.addOption('anthropic/claude-sonnet-4', 'Claude Sonnet 4')
+					.addOption('google/gemini-2.5-pro', 'Gemini 2.5 Pro')
+					// 自定义占位，避免在使用自定义模型时 setValue 报错
+					.addOption('custom', '自定义（使用下方输入）');
+
+				const presetKeys = [
+					'anthropic/claude-3.7-sonnet',
+					'google/gemini-2.5-flash',
+					'anthropic/claude-sonnet-4',
+					'google/gemini-2.5-pro'
+				];
+				const current = this.plugin.settings.model;
+				if (presetKeys.includes(current)) {
+					dropdown.setValue(current);
+				} else {
+					dropdown.setValue('custom');
+				}
+
+				dropdown.onChange(async (value) => {
+					if (value !== 'custom') {
+						this.plugin.settings.model = value;
+						await this.plugin.saveSettings();
+					}
+				});
+			});
+
+		// 自定义模型输入框
+		new Setting(containerEl)
+			.setName('自定义模型')
+			.setDesc('可手动输入模型名称（填写后将覆盖上方选择）')
+			.addText(text => text
+				.setPlaceholder('例如：anthropic/claude-3.7-sonnet')
 				.setValue(this.plugin.settings.model)
 				.onChange(async (value) => {
-					this.plugin.settings.model = value;
+					this.plugin.settings.model = value.trim();
 					await this.plugin.saveSettings();
 				}));
 
